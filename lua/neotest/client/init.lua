@@ -370,7 +370,7 @@ function neotest.Client:_start(args)
   end
   self._adapters = {}
   if not lib.subprocess.enabled() then
-    lib.subprocess.init()
+    -- lib.subprocess.init()
   end
   local process_tracker = NeotestProcessTracker()
   self._runner = NeotestRunner(process_tracker)
