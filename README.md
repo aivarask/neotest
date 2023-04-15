@@ -83,18 +83,18 @@ To get started you will also need to install an adapter for your test runner.
 | plenary         |  [neotest-plenary](https://github.com/nvim-neotest/neotest-plenary)  |
 | go              |         [neotest-go](https://github.com/akinsho/neotest-go)          |
 | jest            |     [neotest-jest](https://github.com/haydenmeade/neotest-jest)      |
-| vitest          |     [neotest-vitest](https://github.com/marilari88/neotest-vitest)   |
+| vitest          |    [neotest-vitest](https://github.com/marilari88/neotest-vitest)    |
 | rspec           |     [neotest-rspec](https://github.com/olimorris/neotest-rspec)      |
 | dart, flutter   |       [neotest-dart](https://github.com/sidlatau/neotest-dart)       |
 | testthat        | [neotest-testthat](https://github.com/shunsambongi/neotest-testthat) |
 | phpunit         |   [neotest-phpunit](https://github.com/olimorris/neotest-phpunit)    |
-| pest            | [neotest-pest](https://github.com/theutz/neotest-pest)               |
+| pest            |        [neotest-pest](https://github.com/theutz/neotest-pest)        |
 | rust            |        [neotest-rust](https://github.com/rouge8/neotest-rust)        |
 | elixir          |    [neotest-elixir](https://github.com/jfpedroza/neotest-elixir)     |
 | dotnet          |    [neotest-dotnet](https://github.com/Issafalcon/neotest-dotnet)    |
 | scala           |    [neotest-scala](https://github.com/stevanmilic/neotest-scala)     |
-| haskell         |    [neotest-haskell](https://github.com/mrcjkb/neotest-haskell)      |
-| deno            |    [neotest-deno](https://github.com/MarkEmmons/neotest-deno)        |
+| haskell         |     [neotest-haskell](https://github.com/mrcjkb/neotest-haskell)     |
+| deno            |      [neotest-deno](https://github.com/MarkEmmons/neotest-deno)      |
 
 For any runner without an adapter you can use [neotest-vim-test](https://github.com/nvim-neotest/neotest-vim-test) which supports any runner that vim-test supports.
 The vim-test adapter does not support some of the more advanced features such as error locations or per-test output.
@@ -132,9 +132,8 @@ require("neodev").setup({
 
 The default icons use [codicons](https://github.com/microsoft/vscode-codicons).
 It's recommended to use this [fork](https://github.com/ChristianChiarulli/neovim-codicons) which fixes alignment issues
-for the terminal. If your terminal doesn't support font fallback and you need to have icons included in your font, you can patch it via [Font Patcher](https://github.com/ryanoasis/nerd-fonts#option-8-patch-your-own-font). 
+for the terminal. If your terminal doesn't support font fallback and you need to have icons included in your font, you can patch it via [Font Patcher](https://github.com/ryanoasis/nerd-fonts#option-8-patch-your-own-font).
 There is a simple step by step guide [here](https://github.com/mortepau/codicons.nvim#how-to-patch-fonts).
-
 
 ## Usage
 
@@ -194,7 +193,6 @@ Displays per-test output
 
 Records all output of tests over time in a single window
 ![image](https://user-images.githubusercontent.com/24252670/201535290-d726c781-a780-4318-b595-a10832b9f191.png)
-
 
 ### Summary Window
 
