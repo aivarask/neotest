@@ -83,7 +83,8 @@ To get started you will also need to install an adapter for your test runner.
 | plenary         |  [neotest-plenary](https://github.com/nvim-neotest/neotest-plenary)  |
 | go              |         [neotest-go](https://github.com/akinsho/neotest-go)          |
 | jest            |     [neotest-jest](https://github.com/haydenmeade/neotest-jest)      |
-| vitest          |    [neotest-vitest](https://github.com/marilari88/neotest-vitest)    |
+| vitest          |     [neotest-vitest](https://github.com/marilari88/neotest-vitest)   |
+| playwright      |  [neotest-playwright](https://github.com/thenbe/neotest-playwright)  |
 | rspec           |     [neotest-rspec](https://github.com/olimorris/neotest-rspec)      |
 | dart, flutter   |       [neotest-dart](https://github.com/sidlatau/neotest-dart)       |
 | testthat        | [neotest-testthat](https://github.com/shunsambongi/neotest-testthat) |
