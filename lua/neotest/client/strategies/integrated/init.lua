@@ -27,10 +27,10 @@ return function(spec)
   local open_err, output_fd = nio.uv.fs_open(output_path, "w", 438)
   assert(not open_err, open_err)
 
-  data_accum:subscribe(function(data)
+  data_accum:subscribe(nio.create(function(data)
     local write_err, _ = nio.uv.fs_write(output_fd, data)
     assert(not write_err, write_err)
-  end)
+  end, 1))
 
   local success, job = pcall(nio.fn.jobstart, command, {
     cwd = cwd,
@@ -39,9 +39,7 @@ return function(spec)
     height = spec.strategy.height,
     width = spec.strategy.width,
     on_stdout = function(_, data)
-      nio.run(function()
-        data_accum:push(table.concat(data, "\n"))
-      end)
+      data_accum:push(table.concat(data, "\n"))
     end,
     on_exit = function(_, code)
       result_code = code
@@ -67,14 +65,26 @@ return function(spec)
     output_stream = function()
       local queue = nio.control.queue()
       data_accum:subscribe(function(d)
-        queue.put(d)
+        queue.put_nowait(d)
       end)
       return function()
-        return nio.first({ finish_future.wait, queue.get })
+        local data = nio.first({ queue.get, finish_future.wait })
+        if data then
+          return data
+        end
+        while queue.size() ~= 0 do
+          return queue.get()
+        end
       end
     end,
     attach = function()
-      if not attach_buf then
+      -- nvim_create_buf returns 0 on error, but bufexists(0) tests for
+      -- existance of an alternate file name, so coerce 0 to nil
+      if attach_buf == 0 then
+        attach_buf = nil
+      end
+
+      if nio.fn.bufexists(attach_buf) == 0 then
         attach_buf = nio.api.nvim_create_buf(false, true)
         attach_chan = lib.ui.open_term(attach_buf, {
           on_input = function(_, _, _, data)
@@ -82,7 +92,7 @@ return function(spec)
           end,
         })
         data_accum:subscribe(function(data)
-          nio.api.nvim_chan_send(attach_chan, data)
+          pcall(nio.api.nvim_chan_send, attach_chan, data)
         end)
       end
       attach_win = lib.ui.float.open({
@@ -90,8 +100,8 @@ return function(spec)
         width = spec.strategy.width,
         buffer = attach_buf,
       })
-      vim.api.nvim_buf_set_option(attach_buf, "filetype", "neotest-attach")
-      vim.api.nvim_buf_set_option(attach_buf, "bufhidden", "wipe")
+      nio.api.nvim_buf_set_option(attach_buf, "filetype", "neotest-attach")
+      nio.api.nvim_buf_set_option(attach_buf, "bufhidden", "wipe")
       attach_win:jump_to()
     end,
     result = function()

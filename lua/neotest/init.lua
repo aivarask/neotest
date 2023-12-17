@@ -23,9 +23,9 @@
 --- Each consumer can be accessed as a property of the neotest module
 --- See the table of contents for the consumers
 ---
---- >vim
+--- ```vim
 ---    lua require("neotest").summary.toggle()
---- <
+--- ```
 ---
 
 ---@class neotest
@@ -37,6 +37,7 @@
 ---@field diagnostic neotest.consumers.diagnostic
 ---@field jump neotest.consumers.jump
 ---@field state neotest.consumers.state
+---@field watch neotest.consumers.watch
 ---@nodoc
 local neotest = {}
 

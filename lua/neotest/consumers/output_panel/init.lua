@@ -56,31 +56,41 @@ local init = function(client)
 end
 
 --- Open the output panel
---- >vim
+--- ```vim
 ---   lua require("neotest").output_panel.open()
---- <
+--- ```
 function neotest.output_panel.open()
   panel.win:open()
 end
 
 --- Close the output panel
---- >vim
+--- ```vim
 ---   lua require("neotest").output_panel.close()
---- <
+--- ```
 function neotest.output_panel.close()
   panel.win:close()
 end
 
 --- Toggle the output panel
---- >vim
+--- ```vim
 ---   lua require("neotest").output_panel.toggle()
---- <
+--- ```
 function neotest.output_panel.toggle()
   if panel.win:is_open() then
     neotest.output_panel.close()
   else
     neotest.output_panel.open()
   end
+end
+
+--- Clears the output panel
+--- >vim
+---   lua require("neotest").output_panel.clear()
+--- <
+function neotest.output_panel.clear()
+  nio.api.nvim_buf_set_option(panel.win:buffer(), "modifiable", true)
+  nio.api.nvim_buf_set_lines(panel.win:buffer(), 0, -1, false, {})
+  nio.api.nvim_buf_set_option(panel.win:buffer(), "modifiable", false)
 end
 
 neotest.output_panel = setmetatable(neotest.output_panel, {

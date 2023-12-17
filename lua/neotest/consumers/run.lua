@@ -5,7 +5,6 @@ local lib = require("neotest.lib")
 ---@type neotest.Client
 local client
 local last_run
-local client_ready = false
 
 local neotest = {}
 
@@ -15,8 +14,13 @@ local neotest = {}
 ---@class neotest.consumers.run
 neotest.run = {}
 
----@private
+---@package
+---@nodoc
 function neotest.run.get_tree_from_args(args, store)
+  args = args or {}
+  if type(args) == "string" then
+    args = { args }
+  end
   local tree, adapter = (function()
     if args.suite then
       if not args.adapter then
@@ -39,54 +43,53 @@ function neotest.run.get_tree_from_args(args, store)
 end
 
 ---@class neotest.run.RunArgs : neotest.client.RunTreeArgs
+---@field [1] string? Position ID to run
 ---@field suite boolean Run the entire suite instead of a single position
 
 --- Run the given position or the nearest position if not given.
 --- All arguments are optional
 ---
 --- Run the current file
---- >vim
+--- ```vim
 ---   lua require("neotest").run.run(vim.fn.expand("%"))
---- <
+--- ```
 ---
 --- Run the nearest test
---- >vim
+--- ```vim
 ---   lua require("neotest").run.run()
---- <
+--- ```
 ---
 --- Debug the current file with nvim-dap
---- >vim
+--- ```vim
 ---   lua require("neotest").run.run({vim.fn.expand("%"), strategy = "dap"})
---- <
+--- ```
 ---@param args string|neotest.run.RunArgs? Position ID to run or args.
-neotest.run.run = nio.create(function(args)
-  args = args or {}
-  if type(args) == "string" then
-    args = { args }
-  end
+function neotest.run.run(args)
   local tree = neotest.run.get_tree_from_args(args, true)
   if not tree then
     lib.notify("No tests found")
     return
   end
-  client:run_tree(tree, args)
-end, 1)
+  client:run_tree(tree, type(args) == "string" and { args } or args)
+end
+
+neotest.run.run = nio.create(neotest.run.run, 1)
 
 --- Re-run the last position that was run.
 --- Arguments are optional
 ---
 --- Run the last position that was run with the same arguments and strategy
---- >vim
+--- ```vim
 ---   lua require("neotest").run.run_last()
---- <
+--- ```
 ---
 --- Run the last position that was run with the same arguments but debug with
 --- nvim-dap
---- >vim
+--- ```vim
 ---   lua require("neotest").run.run_last({ strategy = "dap" })
---- <
+--- ```
 ---@param args neotest.run.RunArgs? Argument overrides
-neotest.run.run_last = nio.create(function(args)
+function neotest.run.run_last(args)
   args = args or {}
   if not last_run then
     lib.notify("No tests run yet")
@@ -102,7 +105,9 @@ neotest.run.run_last = nio.create(function(args)
     end
     client:run_tree(tree, args)
   end)
-end, 1)
+end
+
+neotest.run.run_last = nio.create(neotest.run.run_last, 1)
 
 local function get_tree_interactive()
   local running = client:running_positions()
@@ -125,7 +130,7 @@ end
 ---
 ---@param args string|neotest.run.StopArgs? Position ID to stop or args. If
 --- args then args[1] should be the position ID.
-neotest.run.stop = nio.create(function(args)
+function neotest.run.stop(args)
   args = args or {}
   if type(args) == "string" then
     args = { args }
@@ -141,7 +146,8 @@ neotest.run.stop = nio.create(function(args)
     return
   end
   client:stop(pos, args)
-end, 1)
+end
+neotest.run.stop = nio.create(neotest.run.stop, 1)
 
 ---@class neotest.run.AttachArgs : neotest.client.AttachArgs
 ---@field interactive boolean Select a running position interactively
@@ -150,7 +156,7 @@ end, 1)
 ---
 ---@param args string|neotest.run.AttachArgs? Position ID to attach to or args. If args then
 --- args[1] should be the position ID.
-neotest.run.attach = nio.create(function(args)
+function neotest.run.attach(args)
   args = args or {}
   if type(args) == "string" then
     args = { args }
@@ -166,15 +172,18 @@ neotest.run.attach = nio.create(function(args)
     return
   end
   client:attach(pos, args)
-end, 1)
+end
+neotest.run.attach = nio.create(neotest.run.attach, 1)
 
 --- Get the list of all known adapter IDs.
 ---@return string[]
+---@nodoc
 function neotest.run.adapters()
-  if not client_ready then
-    return {}
-  end
-  return client:get_adapters()
+  lib.notify(
+    "`neotest.run.adapters` is deprecated, please use `neotest.state.adapter_ids` instead",
+    vim.log.levels.WARN
+  )
+  return require("neotest").state.adapter_ids()
 end
 
 --- Get last test position ID and args
@@ -191,9 +200,6 @@ neotest.run = setmetatable(neotest.run, {
   ---@param client_ neotest.Client
   __call = function(_, client_)
     client = client_
-    client.listeners.starting = function()
-      client_ready = true
-    end
     return neotest.run
   end,
 })

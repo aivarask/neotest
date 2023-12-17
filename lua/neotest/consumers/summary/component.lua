@@ -179,6 +179,13 @@ function SummaryComponent:_render(canvas, tree, expanded, focused, indent)
       end)
     )
     canvas:add_mapping(
+      "watch",
+      async_func(function()
+        neotest.watch.toggle({ position.id, adapter = self.adapter_id })
+        neotest.summary.render()
+      end)
+    )
+    canvas:add_mapping(
       "output",
       async_func(function()
         neotest.output.open({ position_id = position.id, adapter = self.adapter_id, enter = true })
@@ -228,7 +235,13 @@ function SummaryComponent:_render(canvas, tree, expanded, focused, indent)
 
     local status = self:_get_status(position)
     has_running = has_running or status == "running"
+
     local state_icon, state_icon_group = self:_state_icon(status)
+
+    if neotest.watch.is_watching(position.id) then
+      state_icon = config.icons.watching
+    end
+
     canvas:write(" " .. state_icon .. " ", { group = state_icon_group })
 
     local name_groups = { config.highlights[position.type] }

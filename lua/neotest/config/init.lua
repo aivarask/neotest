@@ -1,3 +1,4 @@
+local lib = require("neotest.lib")
 ---@tag neotest.config
 ---@toc_entry Configuration Options
 
@@ -7,7 +8,7 @@ local function define_highlights()
   hi default NeotestFailed ctermfg=Red guifg=#F70067
   hi default NeotestRunning ctermfg=Yellow guifg=#FFEC63
   hi default NeotestSkipped ctermfg=Cyan guifg=#00f1f5
-  hi default link NeotestTest Normal 
+  hi default link NeotestTest Normal
   hi default NeotestNamespace ctermfg=Magenta guifg=#D484FF
   hi default NeotestFocused gui=bold,underline cterm=bold,underline
   hi default NeotestFile ctermfg=Cyan guifg=#00f1f5
@@ -18,6 +19,7 @@ local function define_highlights()
   hi default NeotestWinSelect ctermfg=Cyan guifg=#00f1f5 gui=bold
   hi default NeotestMarked ctermfg=Brown guifg=#F79000 gui=bold
   hi default NeotestTarget ctermfg=Red guifg=#F70067
+  hi default NeotestWatching ctermfg=Yellow guifg=#FFEC63
   hi default link NeotestUnknown Normal
 ]])
 end
@@ -45,17 +47,15 @@ define_highlights()
 ---@field quickfix neotest.Config.quickfix
 ---@field status neotest.Config.status
 ---@field state neotest.Config.state
+---@field watch neotest.Config.watch
 ---@field diagnostic neotest.Config.diagnostic
 ---@field projects table<string, neotest.CoreConfig> Project specific settings, keys
 --- are project root directories (e.g "~/Dev/my_project")
 
 ---@class neotest.Config.discovery
 ---@field enabled boolean
----@field concurrent integer Number of workers to parse files concurrently. 0
---- automatically assigns number based on CPU. Set to 1 if experiencing lag.
----@field filter_dir nil | fun(name: string, rel_path: string, root: string): boolean
---- A function to filter directories when searching for test files. Receives the name,
---- path relative to project root and project root path
+---@field concurrent integer Number of workers to parse files concurrently. 0 automatically assigns number based on CPU. Set to 1 if experiencing lag.
+---@field filter_dir nil | fun(name: string, rel_path: string, root: string): boolean A function to filter directories when searching for test files. Receives the name, path relative to project root and project root path
 
 ---@class neotest.Config.running
 ---@field concurrent boolean Run tests concurrently when an adapter provides multiple commands to run
@@ -100,6 +100,7 @@ define_highlights()
 ---@field clear_target string|string[] Clear the target position for the selected adapter
 ---@field next_failed string|string[] Jump to the next failed position
 ---@field prev_failed string|string[] Jump to the previous failed position
+---@field watch string|string[] Toggle watching for changes
 
 ---@class neotest.Config.output
 ---@field enabled boolean
@@ -125,6 +126,11 @@ define_highlights()
 ---@field enabled boolean
 ---@field virtual_text boolean Display status using virtual text
 ---@field signs boolean Display status using signs
+
+---@class neotest.Config.watch
+---@field enabled boolean
+---@field symbol_queries table<string, string|fun(root, content: string, path: string):integer[][]> Treesitter queries or functions to capture symbols that are used for querying the LSP server for defintions to link files. If it is a function then the return value should be a list of node ranges.
+---@field filter_path? fun(path: string, root: string): boolean Returns whether the watcher should inspect a path for dependencies. Default ignores paths not under root or common package manager directories.
 
 ---@private
 ---@type neotest.Config
@@ -167,6 +173,7 @@ local default_config = {
     final_child_prefix = "╰",
     child_indent = "│",
     final_child_indent = " ",
+    watching = "",
   },
   highlights = {
     passed = "NeotestPassed",
@@ -186,6 +193,7 @@ local default_config = {
     marked = "NeotestMarked",
     target = "NeotestTarget",
     unknown = "NeotestUnknown",
+    watching = "NeotestWatching",
   },
   floating = {
     border = "rounded",
@@ -224,6 +232,7 @@ local default_config = {
       clear_target = "T",
       next_failed = "J",
       prev_failed = "K",
+      watch = "w",
     },
   },
   benchmark = {
@@ -254,10 +263,69 @@ local default_config = {
   },
   quickfix = {
     enabled = true,
-    open = true,
+    open = false,
   },
   state = {
     enabled = true,
+  },
+  watch = {
+    enabled = true,
+    symbol_queries = {
+      python = [[
+        ;query
+        ;Captures imports and modules they're imported from
+        (import_from_statement (_ (identifier) @symbol))
+        (import_statement (_ (identifier) @symbol))
+      ]],
+      go = [[
+        ;query
+        ;Captures imported types
+        (qualified_type name: (type_identifier) @symbol)
+        ;Captures package-local and built-in types
+        (type_identifier)@symbol
+        ;Captures imported function calls and variables/constants
+        (selector_expression field: (field_identifier) @symbol)
+        ;Captures package-local functions calls
+        (call_expression function: (identifier) @symbol)
+      ]],
+      lua = [[
+        ;query
+        ;Captures module names in require calls
+        (function_call
+          name: ((identifier) @function (#eq? @function "require"))
+          arguments: (arguments (string) @symbol))
+      ]],
+      elixir = function(root, content)
+        local query = lib.treesitter.normalise_query(
+          "elixir",
+          [[;; query
+            (call (identifier) @_func_name
+              (arguments (alias) @symbol)
+              (#match? @_func_name "^(alias|require|import|use)")
+              (#gsub! @symbol ".*%.(.*)" "%1")
+            )
+          ]]
+        )
+        local symbols = {}
+        for _, match, metadata in query:iter_matches(root, content) do
+          for id, node in pairs(match) do
+            local name = query.captures[id]
+
+            if name == "symbol" then
+              local start_row, start_col, end_row, end_col = node:range()
+              if metadata[id] ~= nil then
+                local real_symbol_length = string.len(metadata[id]["text"])
+                start_col = end_col - real_symbol_length
+              end
+
+              symbols[#symbols + 1] = { start_row, start_col, end_row, end_col }
+            end
+          end
+        end
+        return symbols
+      end,
+    },
+    filter_path = nil,
   },
   projects = {},
 }
@@ -313,6 +381,7 @@ function NeotestConfigModule.setup_project(project_root, config)
     adapters = user_config.adapters,
     discovery = user_config.discovery,
     running = user_config.running,
+    default_strategy = user_config.default_strategy,
   })
   user_config.projects[path].discovery.concurrent =
     convert_concurrent(user_config.projects[path].discovery.concurrent)
